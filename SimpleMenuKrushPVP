@@ -1,0 +1,275 @@
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+
+local Window = OrionLib:MakeWindow({Name = "SimpleMenu 💉"})
+
+local Tab = Window:MakeTab({
+    Name = "KrushPVP",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+OrionLib:MakeNotification({
+    Name = "SimpleMenu",
+    Content = "Successful!",
+    Image = "rbxassetid://4483345998",
+    Time = 5
+})
+
+
+------ ( PLAYER )
+
+local Section = Tab:AddSection({
+    Name = "PLAYER"
+})
+
+--- NAMES
+ 
+-- Armazene uma tabela para manter as informações dos nomes
+local nameTags = {}
+
+local function EnableNames()
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        local character = player.Character
+        if character and player ~= game.Players.LocalPlayer then
+            local head = character:FindFirstChild("Head")
+
+            if head and not nameTags[player] then
+                local nameTag = Instance.new("BillboardGui")
+                nameTag.Name = "NameTag"
+                nameTag.Adornee = head
+                nameTag.Size = UDim2.new(0, 100, 0, 40)
+                nameTag.StudsOffset = Vector3.new(0, 3, 0)
+                nameTag.AlwaysOnTop = true
+
+                local nameLabel = Instance.new("TextLabel")
+                nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.TextColor3 = Color3.new(1, 1, 1)
+                nameLabel.TextStrokeTransparency = 0.5
+                nameLabel.Font = Enum.Font.SourceSans
+                nameLabel.TextSize = 14
+                nameLabel.Text = player.Name
+                nameLabel.Parent = nameTag
+
+                local distanceLabel = nameLabel:Clone()
+                distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+                distanceLabel.Parent = nameTag
+
+                nameTag.Parent = head
+
+                nameTags[player] = nameTag
+
+                -- Adicione um atraso para permitir que os elementos sejam totalmente carregados
+                wait(0.1)
+
+                game:GetService("RunService").RenderStepped:Connect(function()
+                    if head and head.Parent == character and player.Character and player.Character:FindFirstChild("Head") then
+                        local localPlayer = game.Players.LocalPlayer
+                        if localPlayer.Character and localPlayer.Character:FindFirstChild("Head") then
+                            local distance = (localPlayer.Character.Head.Position - head.Position).Magnitude
+                            distanceLabel.Text = "[ Meters ] " .. tostring(math.floor(distance)) .. "m"
+                        end
+                    end
+                end)
+            end
+        end
+    end
+end
+
+local function DisableNames()
+    for player, nameTag in pairs(nameTags) do
+        nameTag:Destroy()
+    end
+    nameTags = {} -- Limpe a tabela de nameTags
+end
+
+local isNamesEnabled = false
+
+local function UpdateNames()
+    if isNamesEnabled then
+        EnableNames()
+    else
+        DisableNames()
+    end
+end
+
+Tab:AddToggle({
+    Name = "Names",
+    Default = false,
+    Callback = function(Value)
+        isNamesEnabled = Value
+        UpdateNames()
+    end
+})
+
+-- Adicione manipuladores de eventos para atualizar ESP quando jogadores entram ou saem
+game.Players.PlayerAdded:Connect(function(player)
+    UpdateNames()
+end)
+
+game.Players.PlayerRemoving:Connect(function(player)
+    UpdateNames()
+end)
+
+
+------ INFINITE JUMP
+
+local InfiniteJumpEnabled = false
+
+local function ToggleInfiniteJump()
+    InfiniteJumpEnabled = not InfiniteJumpEnabled
+end
+
+local function JumpIfEnabled()
+    if InfiniteJumpEnabled then
+        game:GetService("Players").LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end
+
+local BoxToggle = Tab:AddToggle({
+    Name = "Infinite Jump",
+    Default = InfiniteJumpEnabled,
+    Callback = function(Value)
+        InfiniteJumpEnabled = Value
+    end
+})
+
+game:GetService("UserInputService").JumpRequest:Connect(JumpIfEnabled)
+
+-- NOCLIP 
+
+local players = game:GetService("Players")
+local user_input = game:GetService("UserInputService")
+
+local noclipToggle = Tab:AddToggle({
+    Name = "Noclip",
+    Default = false,
+    Callback = function(Value)
+        local localPlayer = players.LocalPlayer
+        local character = localPlayer.Character
+        
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = not Value
+                end
+            end
+        end
+    end    
+})
+
+user_input.InputBegan:Connect(function(input, gameProcessedEvent)
+    if noclipToggle.Value and input.UserInputType == Enum.UserInputType.Keyboard then
+        local character = players.LocalPlayer.Character
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+user_input.InputEnded:Connect(function(input, gameProcessedEvent)
+    if noclipToggle.Value and input.UserInputType == Enum.UserInputType.Keyboard then
+        local character = players.LocalPlayer.Character
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+end)
+
+
+---- AIMLOCK
+
+-- AIMLOCK
+
+local Section = Tab:AddSection({
+    Name = "Troll"
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = game.Players.LocalPlayer
+local camera = game.Workspace.CurrentCamera
+
+local aimlockEnabled = false
+local maxAimlockDistance = 500 -- Defina a distância máxima desejada em metros
+
+local function toggleAimlock()
+    aimlockEnabled = not aimlockEnabled
+end
+
+local function findNearestPlayerByAngle()
+    local closestPlayer = nil
+    local smallestAngle = math.huge
+    local playerCharacter = player.Character
+
+    if playerCharacter then
+        local playerPosition = playerCharacter:WaitForChild("HumanoidRootPart").Position
+        local cameraDirection = camera.CFrame.lookVector
+
+        for _, otherPlayer in pairs(Players:GetPlayers()) do
+            if otherPlayer ~= player then
+                local otherCharacter = otherPlayer.Character
+                if otherCharacter then
+                    local head = otherCharacter:FindFirstChild("Head")
+                    if head then
+                        local targetPosition = head.Position
+                        local directionToTarget = (targetPosition - playerPosition).unit
+                        local angle = math.acos(cameraDirection:Dot(directionToTarget))
+
+                        -- Verificar se o jogador está dentro do alcance máximo
+                        local distance = (targetPosition - playerPosition).magnitude
+                        if angle < smallestAngle and distance <= maxAimlockDistance then
+                            closestPlayer = otherPlayer
+                            smallestAngle = angle
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+local function aimlock()
+    if aimlockEnabled then
+        local nearestPlayer = findNearestPlayerByAngle()
+        if nearestPlayer then
+            local head = nearestPlayer.Character:FindFirstChild("Head")
+            if head then
+                local targetPosition = head.Position
+
+                -- Calcular a rotação da câmera para mirar na cabeça do jogador mais próximo
+                local lookAt = CFrame.new(camera.CFrame.Position, targetPosition)
+
+                -- Aplicar a rotação da câmera
+                camera.CFrame = lookAt
+            end
+        end
+    end
+end
+
+local function aimlockKeybind()
+    -- Função chamada quando a keybind é ativada (por exemplo, quando a tecla E é pressionada)
+    toggleAimlock()
+end
+
+RunService.RenderStepped:Connect(aimlock)
+
+-- Adicione a keybind "Bind" com a tecla E
+Tab:AddBind({
+    Name = "Aimlock Keybind",
+    Default = Enum.KeyCode.E,
+    Hold = false,
+    Callback = aimlockKeybind
+})
