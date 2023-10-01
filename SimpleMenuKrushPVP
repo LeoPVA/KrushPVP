@@ -3,7 +3,7 @@ local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shl
 local Window = OrionLib:MakeWindow({Name = "SimpleMenu 💉"})
 
 local Tab = Window:MakeTab({
-    Name = "KrushPVP",
+    Name = "All Games",
     Icon = "rbxassetid://4483345998",
     PremiumOnly = false
 })
@@ -21,6 +21,108 @@ OrionLib:MakeNotification({
 local Section = Tab:AddSection({
     Name = "PLAYER"
 })
+
+
+--- ESP
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Highlight = Instance.new("Highlight")
+Highlight.Name = "Highlight"
+
+local scriptAtivado = false
+
+local function OnToggleValueChanged(value)
+    scriptAtivado = value
+    if scriptAtivado then
+        print("Script ativado")
+    else
+        print("Script desativado")
+        
+        -- Remover destaque de todos os jogadores quando o script é desativado
+        for _, player in pairs(Players:GetPlayers()) do
+            local character = player.Character
+            if character and character:FindFirstChild("HumanoidRootPart") then
+                local highlight = character:FindFirstChild("HumanoidRootPart"):FindFirstChild("Highlight")
+                if highlight then
+                    highlight:Destroy()
+                end
+            end
+        end
+    end
+end
+
+Tab:AddToggle({
+    Name = "ESP",
+    Default = false,
+    Callback = OnToggleValueChanged
+})
+
+function ApplyToCurrentPlayers()
+    for _, player in pairs(Players:GetPlayers()) do
+        repeat wait() until player.Character
+        if scriptAtivado and not player.Character:FindFirstChild("HumanoidRootPart"):FindFirstChild("Highlight") then
+            local HighlightClone = Highlight:Clone()
+            HighlightClone.Adornee = player.Character
+            HighlightClone.Parent = player.Character:FindFirstChild("HumanoidRootPart")
+            HighlightClone.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            HighlightClone.Name = "Highlight"
+        end
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    ApplyToCurrentPlayers()
+end)
+
+
+-- NOCLIP 
+
+local players = game:GetService("Players")
+local user_input = game:GetService("UserInputService")
+
+local noclipToggle = Tab:AddToggle({
+    Name = "Noclip",
+    Default = false,
+    Callback = function(Value)
+        local localPlayer = players.LocalPlayer
+        local character = localPlayer.Character
+        
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = not Value
+                end
+            end
+        end
+    end    
+})
+
+user_input.InputBegan:Connect(function(input, gameProcessedEvent)
+    if noclipToggle.Value and input.UserInputType == Enum.UserInputType.Keyboard then
+        local character = players.LocalPlayer.Character
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+user_input.InputEnded:Connect(function(input, gameProcessedEvent)
+    if noclipToggle.Value and input.UserInputType == Enum.UserInputType.Keyboard then
+        local character = players.LocalPlayer.Character
+        if character then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+end)
 
 --- NAMES
  
@@ -112,6 +214,7 @@ game.Players.PlayerRemoving:Connect(function(player)
     UpdateNames()
 end)
 
+--- INFINITE JUMP
 
 ------ INFINITE JUMP
 
@@ -136,57 +239,6 @@ local BoxToggle = Tab:AddToggle({
 })
 
 game:GetService("UserInputService").JumpRequest:Connect(JumpIfEnabled)
-
--- NOCLIP 
-
-local players = game:GetService("Players")
-local user_input = game:GetService("UserInputService")
-
-local noclipToggle = Tab:AddToggle({
-    Name = "Noclip",
-    Default = false,
-    Callback = function(Value)
-        local localPlayer = players.LocalPlayer
-        local character = localPlayer.Character
-        
-        if character then
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = not Value
-                end
-            end
-        end
-    end    
-})
-
-user_input.InputBegan:Connect(function(input, gameProcessedEvent)
-    if noclipToggle.Value and input.UserInputType == Enum.UserInputType.Keyboard then
-        local character = players.LocalPlayer.Character
-        if character then
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end
-    end
-end)
-
-user_input.InputEnded:Connect(function(input, gameProcessedEvent)
-    if noclipToggle.Value and input.UserInputType == Enum.UserInputType.Keyboard then
-        local character = players.LocalPlayer.Character
-        if character then
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
-    end
-end)
-
-
----- AIMLOCK
 
 -- AIMLOCK
 
@@ -226,7 +278,7 @@ local function findNearestPlayerByAngle()
                         local directionToTarget = (targetPosition - playerPosition).unit
                         local angle = math.acos(cameraDirection:Dot(directionToTarget))
 
-                        -- Verificar se o jogador está dentro do alcance máximo
+                        
                         local distance = (targetPosition - playerPosition).magnitude
                         if angle < smallestAngle and distance <= maxAimlockDistance then
                             closestPlayer = otherPlayer
@@ -249,10 +301,10 @@ local function aimlock()
             if head then
                 local targetPosition = head.Position
 
-                -- Calcular a rotação da câmera para mirar na cabeça do jogador mais próximo
+                
                 local lookAt = CFrame.new(camera.CFrame.Position, targetPosition)
 
-                -- Aplicar a rotação da câmera
+                
                 camera.CFrame = lookAt
             end
         end
@@ -260,16 +312,78 @@ local function aimlock()
 end
 
 local function aimlockKeybind()
-    -- Função chamada quando a keybind é ativada (por exemplo, quando a tecla E é pressionada)
+    
     toggleAimlock()
 end
 
 RunService.RenderStepped:Connect(aimlock)
 
--- Adicione a keybind "Bind" com a tecla E
+
 Tab:AddBind({
-    Name = "Aimlock Keybind",
+    Name = "Aimlock Keybind ( 0 Smoothness)",
     Default = Enum.KeyCode.E,
     Hold = false,
     Callback = aimlockKeybind
 })
+
+
+---- GRUDAR PLAYER 
+
+local player = game.Players.LocalPlayer
+local userInputService = game:GetService("UserInputService")
+local cooldown = 0.2
+local textbox
+local isTeleporting = false
+
+local function teleportToPlayer(targetPlayerName)
+    local targetPlayer = game.Players:FindFirstChild(targetPlayerName)
+    
+    if targetPlayer and targetPlayer.Character then
+        local character = player.Character
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        
+        if humanoidRootPart then
+            local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+            humanoidRootPart.CFrame = CFrame.new(targetPosition)
+        end
+    end
+end
+
+local function onTextboxChange(value)
+    isTeleporting = true
+    
+    while isTeleporting do
+        teleportToPlayer(value)
+        wait(cooldown)
+    end
+end
+
+textbox = Tab:AddTextbox({
+    Name = "Grudar no player (Para Após A Morte)",
+    Default = "", 
+    TextDisappear = true,
+    Callback = onTextboxChange
+})
+
+-- Adicione um manipulador para quando o jogador morrer
+player.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Humanoid").Died:Connect(function()
+        isTeleporting = false
+    end)
+end)
+
+---- FLY 
+
+-- Função que será chamada quando o botão for pressionado
+local function buttonCallback()
+    print("Botão pressionado")
+    loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\40\39\104\116\116\112\115\58\47\47\103\105\115\116\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\101\111\122\111\110\101\89\84\47\98\102\48\51\55\100\102\102\57\102\48\97\55\48\48\49\55\51\48\52\100\100\100\54\55\102\100\99\100\51\55\48\47\114\97\119\47\101\49\52\101\55\52\102\52\50\53\98\48\54\48\100\102\53\50\51\51\52\51\99\102\51\48\98\55\56\55\48\55\52\101\98\51\99\53\100\50\47\97\114\99\101\117\115\37\50\53\50\48\120\37\50\53\50\48\102\108\121\37\50\53\50\48\50\37\50\53\50\48\111\98\102\108\117\99\97\116\111\114\39\41\44\116\114\117\101\41\41\40\41\10\10")()
+end
+
+-- Adicione o botão à GUI
+Tab:AddButton({
+    Name = "Fly GUI (Some Após Morrer)",
+    Callback = buttonCallback
+})
+
+OrionLib:Init()
